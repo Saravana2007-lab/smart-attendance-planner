@@ -13,11 +13,14 @@ app = Flask(__name__, static_folder=".", static_url_path="")
 # =========================================================
 # DATABASE CONNECTION
 # =========================================================
+
 def connect_database():
+    return sqlite3.connect("smart_attendance.db")
 
-   return sqlite3.connect("smart_attendance.db")
 
-
+# =========================================================
+# DATABASE INITIALIZATION
+# =========================================================
 
 def initialize_database():
 
@@ -25,52 +28,68 @@ def initialize_database():
     cursor = connection.cursor()
 
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS attendance (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        student_name TEXT NOT NULL,
-        roll_no INTEGER NOT NULL,
-        subject TEXT NOT NULL,
-        total_classes INTEGER NOT NULL,
-        attended_classes INTEGER NOT NULL
-    )
+        CREATE TABLE IF NOT EXISTS attendance (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            student_name TEXT NOT NULL,
+            roll_no INTEGER NOT NULL,
+            subject TEXT NOT NULL,
+            total_classes INTEGER NOT NULL,
+            attended_classes INTEGER NOT NULL
+        )
     """)
 
     cursor.execute("SELECT COUNT(*) FROM attendance")
+
     count = cursor.fetchone()[0]
 
     if count == 0:
+
         students = [
+
             ("Harshita", 101, "Python", 50, 42),
             ("Harshita", 101, "Operating System", 45, 36),
             ("Harshita", 101, "Computer Network", 40, 31),
             ("Harshita", 101, "DBMS", 48, 34),
+
             ("Spoorthi", 102, "Python", 50, 44),
             ("Spoorthi", 102, "Operating System", 45, 35),
             ("Spoorthi", 102, "Computer Network", 40, 34),
             ("Spoorthi", 102, "DBMS", 50, 40),
+
             ("Reetesh", 103, "Python", 48, 38),
             ("Reetesh", 103, "Operating System", 50, 39),
             ("Reetesh", 103, "Computer Network", 42, 30),
             ("Reetesh", 103, "DBMS", 45, 32),
+
             ("Ravi", 104, "Python", 55, 45),
             ("Ravi", 104, "Operating System", 55, 44),
             ("Ravi", 104, "Computer Network", 45, 36),
             ("Ravi", 104, "DBMS", 60, 48),
+
             ("Preetam", 105, "Python", 50, 38),
             ("Preetam", 105, "Operating System", 50, 34),
             ("Preetam", 105, "Computer Network", 40, 27),
             ("Preetam", 105, "DBMS", 55, 41)
+
         ]
+
         cursor.executemany("""
-        INSERT INTO attendance
-        (student_name, roll_no, subject, total_classes, attended_classes)
-        VALUES (?, ?, ?, ?, ?)
+            INSERT INTO attendance
+            (
+                student_name,
+                roll_no,
+                subject,
+                total_classes,
+                attended_classes
+            )
+            VALUES (?, ?, ?, ?, ?)
         """, students)
 
     connection.commit()
     connection.close()
 
 
+# Initialize database when Flask starts
 initialize_database()
 
 
@@ -97,7 +116,6 @@ def classes_required(total_classes, attended_classes):
     )
 
     if attendance >= 75:
-
         return 0
 
     required = 0.75
@@ -125,7 +143,6 @@ def classes_can_miss(total_classes, attended_classes):
     )
 
     if attendance < 75:
-
         return 0
 
     required = 0.75
@@ -148,13 +165,17 @@ def normalize_subject(subject):
 
         "python": "Python",
 
-        "operating system": "Operating System",
+        "operating system":
+            "Operating System",
 
-        "computer network": "Computer Network",
+        "computer network":
+            "Computer Network",
 
-        "dbms": "DBMS",
+        "dbms":
+            "DBMS",
 
-        "web programming": "Web Programming"
+        "web programming":
+            "Web Programming"
 
     }
 
@@ -168,19 +189,42 @@ def normalize_subject(subject):
 # =========================================================
 # HOME PAGE
 # =========================================================
+
 @app.route("/")
 def home():
-    return send_from_directory(".", "index.html")
 
+    return send_from_directory(
+        ".",
+        "index.html"
+    )
+
+
+# =========================================================
+# CSS
+# =========================================================
 
 @app.route("/style.css")
 def style():
-    return send_from_directory(".", "style.css")
 
+    return send_from_directory(
+        ".",
+        "style.css"
+    )
+
+
+# =========================================================
+# JAVASCRIPT
+# =========================================================
 
 @app.route("/script.js")
 def script():
-    return send_from_directory(".", "script.js")
+
+    return send_from_directory(
+        ".",
+        "script.js"
+    )
+
+
 # =========================================================
 # ATTENDANCE API
 # =========================================================
@@ -188,22 +232,43 @@ def script():
 @app.route("/api/attendance", methods=["POST"])
 def attendance_api():
 
-    data = request.get_json()
+    data = request.get_json(silent=True)
+
+    if not data:
+        return jsonify({
+            "success": False,
+            "message": "Invalid JSON request."
+        }), 400
 
 
     # -----------------------------------------------------
     # GET DATA FROM WEBSITE
     # -----------------------------------------------------
 
-    operation = data.get("operation", "").strip().lower()
+    operation = data.get(
+        "operation",
+        ""
+    ).strip().lower()
 
-    student_name = data.get("studentName", "").strip()
+    student_name = data.get(
+        "studentName",
+        ""
+    ).strip()
 
-    roll_no = data.get("rollNumber", "")
+    roll_no = data.get(
+        "rollNumber",
+        ""
+    )
 
-    subject = data.get("subject", "").strip()
+    subject = data.get(
+        "subject",
+        ""
+    ).strip()
 
-    new_classes = data.get("newClasses", "")
+    new_classes = data.get(
+        "newClasses",
+        ""
+    )
 
 
     # -----------------------------------------------------
@@ -246,7 +311,7 @@ def attendance_api():
 
         roll_no = int(roll_no)
 
-    except ValueError:
+    except (ValueError, TypeError):
 
         return jsonify({
             "success": False,
@@ -293,9 +358,7 @@ def attendance_api():
     if operation == "report":
 
         connection = connect_database()
-
         cursor = connection.cursor()
-
 
         cursor.execute("""
             SELECT
@@ -308,45 +371,34 @@ def attendance_api():
             ORDER BY roll_no, subject
         """)
 
-
         records = cursor.fetchall()
 
         connection.close()
 
-
         report = []
-
 
         for record in records:
 
             name = record[0]
-
             roll = record[1]
-
             sub = record[2]
-
             total = record[3]
-
             attended = record[4]
-
 
             percentage = calculate_attendance(
                 total,
                 attended
             )
 
-
             required = classes_required(
                 total,
                 attended
             )
 
-
             can_miss = classes_can_miss(
                 total,
                 attended
             )
-
 
             report.append({
 
@@ -388,9 +440,7 @@ def attendance_api():
     # -----------------------------------------------------
 
     connection = connect_database()
-
     cursor = connection.cursor()
-
 
     cursor.execute("""
         SELECT
@@ -410,7 +460,6 @@ def attendance_api():
         subject
 
     ))
-
 
     record = cursor.fetchone()
 
@@ -486,37 +535,56 @@ def attendance_api():
             })
 
 
-        new_total = total_classes + new_classes
+        new_total = (
+            total_classes
+            + new_classes
+        )
 
-        new_attended = attended_classes + new_classes
+        new_attended = (
+            attended_classes
+            + new_classes
+        )
 
 
         cursor.execute("""
             UPDATE attendance
-            SET total_classes = ?,
+
+            SET
+                total_classes = ?,
                 attended_classes = ?
-            WHERE LOWER(student_name) = LOWER(?)
+
+            WHERE
+                LOWER(student_name) = LOWER(?)
+
             AND roll_no = ?
+
             AND LOWER(subject) = LOWER(?)
+
         """, (
 
             new_total,
+
             new_attended,
+
             student_name,
+
             roll_no,
+
             subject
 
         ))
 
 
         connection.commit()
-
         connection.close()
 
 
         percentage = calculate_attendance(
+
             new_total,
+
             new_attended
+
         )
 
 
@@ -526,20 +594,26 @@ def attendance_api():
 
             "operation": "update",
 
-            "studentName": database_name,
+            "studentName":
+                database_name,
 
-            "rollNumber": database_roll,
+            "rollNumber":
+                database_roll,
 
-            "subject": database_subject,
+            "subject":
+                database_subject,
 
-            "totalClasses": new_total,
+            "totalClasses":
+                new_total,
 
-            "attendedClasses": new_attended,
+            "attendedClasses":
+                new_attended,
 
-            "attendance": round(
-                percentage,
-                2
-            ),
+            "attendance":
+                round(
+                    percentage,
+                    2
+                ),
 
             "message":
                 "Attendance updated successfully."
@@ -552,8 +626,11 @@ def attendance_api():
     # -----------------------------------------------------
 
     percentage = calculate_attendance(
+
         total_classes,
+
         attended_classes
+
     )
 
 
@@ -571,20 +648,26 @@ def attendance_api():
 
             "operation": "view",
 
-            "studentName": database_name,
+            "studentName":
+                database_name,
 
-            "rollNumber": database_roll,
+            "rollNumber":
+                database_roll,
 
-            "subject": database_subject,
+            "subject":
+                database_subject,
 
-            "totalClasses": total_classes,
+            "totalClasses":
+                total_classes,
 
-            "attendedClasses": attended_classes,
+            "attendedClasses":
+                attended_classes,
 
-            "attendance": round(
-                percentage,
-                2
-            )
+            "attendance":
+                round(
+                    percentage,
+                    2
+                )
 
         })
 
@@ -603,20 +686,26 @@ def attendance_api():
 
             "operation": "calculate",
 
-            "studentName": database_name,
+            "studentName":
+                database_name,
 
-            "rollNumber": database_roll,
+            "rollNumber":
+                database_roll,
 
-            "subject": database_subject,
+            "subject":
+                database_subject,
 
-            "totalClasses": total_classes,
+            "totalClasses":
+                total_classes,
 
-            "attendedClasses": attended_classes,
+            "attendedClasses":
+                attended_classes,
 
-            "attendance": round(
-                percentage,
-                2
-            )
+            "attendance":
+                round(
+                    percentage,
+                    2
+                )
 
         })
 
@@ -628,8 +717,11 @@ def attendance_api():
     if operation == "required":
 
         required = classes_required(
+
             total_classes,
+
             attended_classes
+
         )
 
 
@@ -642,18 +734,23 @@ def attendance_api():
 
             "operation": "required",
 
-            "studentName": database_name,
+            "studentName":
+                database_name,
 
-            "rollNumber": database_roll,
+            "rollNumber":
+                database_roll,
 
-            "subject": database_subject,
+            "subject":
+                database_subject,
 
-            "attendance": round(
-                percentage,
-                2
-            ),
+            "attendance":
+                round(
+                    percentage,
+                    2
+                ),
 
-            "classesRequired": required
+            "classesRequired":
+                required
 
         })
 
@@ -667,8 +764,11 @@ def attendance_api():
         if percentage < 75:
 
             required = classes_required(
+
                 total_classes,
+
                 attended_classes
+
             )
 
 
@@ -681,29 +781,37 @@ def attendance_api():
 
                 "operation": "miss",
 
-                "studentName": database_name,
+                "studentName":
+                    database_name,
 
-                "rollNumber": database_roll,
+                "rollNumber":
+                    database_roll,
 
-                "subject": database_subject,
+                "subject":
+                    database_subject,
 
-                "attendance": round(
-                    percentage,
-                    2
-                ),
+                "attendance":
+                    round(
+                        percentage,
+                        2
+                    ),
 
                 "classesCanMiss": 0,
 
                 "below75": True,
 
-                "classesRequired": required
+                "classesRequired":
+                    required
 
             })
 
 
         can_miss = classes_can_miss(
+
             total_classes,
+
             attended_classes
+
         )
 
 
@@ -716,18 +824,23 @@ def attendance_api():
 
             "operation": "miss",
 
-            "studentName": database_name,
+            "studentName":
+                database_name,
 
-            "rollNumber": database_roll,
+            "rollNumber":
+                database_roll,
 
-            "subject": database_subject,
+            "subject":
+                database_subject,
 
-            "attendance": round(
-                percentage,
-                2
-            ),
+            "attendance":
+                round(
+                    percentage,
+                    2
+                ),
 
-            "classesCanMiss": can_miss,
+            "classesCanMiss":
+                can_miss,
 
             "below75": False
 
@@ -740,12 +853,12 @@ def attendance_api():
 
     connection.close()
 
-
     return jsonify({
 
         "success": False,
 
-        "message": "Invalid operation."
+        "message":
+            "Invalid operation."
 
     })
 
@@ -757,6 +870,8 @@ def attendance_api():
 if __name__ == "__main__":
 
     app.run(
-    debug=False,
-    use_reloader=False
-)
+        host="0.0.0.0",
+        port=5000,
+        debug=False,
+        use_reloader=False
+    )
