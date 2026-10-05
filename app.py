@@ -465,8 +465,7 @@ def attendance_api():
 
 
     # -----------------------------------------------------
-    # RECORD NOT FOUND
-    # -----------------------------------------------------
+    # RECORD NOT FOUND------------------------------
 
     if record is None:
 
@@ -521,7 +520,7 @@ def attendance_api():
             })
 
 
-        if new_classes <= 0:
+        if new_classes <= 1:
 
             connection.close()
 
